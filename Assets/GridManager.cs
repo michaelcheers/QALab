@@ -4,6 +4,60 @@ using System.Collections.Generic;
 using System.Linq;
 using System;
 
+public struct GridPosition
+{
+    public int x;
+    public int y;
+    public GridPosition(int x, int y)
+    {
+        this.x = x;
+        this.y = y;
+    }
+
+    public override int GetHashCode()
+    {
+        return x * 10000 + y;
+    }
+
+    public override bool Equals(object obj)
+    {
+        if (obj is GridPosition)
+            return this == (GridPosition)obj;
+        else
+            return false;
+    }
+
+    public static bool operator ==(GridPosition a, GridPosition b)
+    {
+        return a.x == b.x && a.y == b.y;
+    }
+
+    public static bool operator !=(GridPosition a, GridPosition b)
+    {
+        return a.x != b.x || a.y != b.y;
+    }
+
+    public bool Adjacent(GridPosition other)
+    {
+        if (x == other.x)
+        {
+            if (Math.Abs(y - other.y) == 1)
+            {
+                return true;
+            }
+        }
+        else if (y == other.y)
+        {
+            if (Math.Abs(x - other.x) == 1)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
 public class GridManager : MonoBehaviour
 {
     public static GridManager instance;
@@ -12,12 +66,14 @@ public class GridManager : MonoBehaviour
     public GameObject[] Prefabs = new GameObject[3];
     List<GameObject> prefabs = new List<GameObject>();
 
-    public bool IsFull (int x, int y)
+    public bool InBounds(int x, int y)
     {
-        if (x >= 0 && x < grid.GetLength(0) && y >= 0 && y < grid.GetLength(1))
-            return grid[x, y] == GridItem.Wall;
-        else
-            return true;
+        return (x >= 0 && x < grid.GetLength(0) && y >= 0 && y < grid.GetLength(1));
+    }
+
+    public bool IsFull(int x, int y)
+    {
+        return InBounds(x, y) && grid[x, y] == GridItem.Wall;
     }
 
     private void Awake()
@@ -94,5 +150,65 @@ public class GridManager : MonoBehaviour
         Nothing,
         Dot,
         Wall
+    }
+
+    struct GridMove
+    {
+        public readonly GridPosition firstStep;
+        public readonly GridPosition endPoint;
+        public GridMove(GridPosition first, GridPosition end)
+        {
+            firstStep = first;
+            endPoint = end;
+        }
+    }
+
+    public GridPosition GetMove(int fromX, int fromY, int toX, int toY)
+    {
+        return GetMove(new GridPosition(fromX, fromY), new GridPosition(toX, toY));
+    }
+
+    GridPosition GetMove(GridPosition from, GridPosition to)
+    {
+        HashSet<GridPosition> visited = new HashSet<GridPosition>();
+        Queue<GridMove> moves = new Queue<GridMove>();
+        visited.Add(from);
+        AddBaseMove(moves, new GridPosition(from.x + 1, from.y), visited);
+        AddBaseMove(moves, new GridPosition(from.x - 1, from.y), visited);
+        AddBaseMove(moves, new GridPosition(from.x, from.y + 1), visited);
+        AddBaseMove(moves, new GridPosition(from.x, from.y - 1), visited);
+
+        while (moves.Count > 0)
+        {
+            GridMove current = moves.Dequeue();
+            visited.Add(current.endPoint);
+            if (current.endPoint == to)
+            {
+                // since we're exploring in breadth-first order, the path we find first is the best possible.
+                return current.firstStep;
+            }
+
+            AddMove(moves, current.firstStep, new GridPosition(current.endPoint.x + 1, current.endPoint.y), visited);
+            AddMove(moves, current.firstStep, new GridPosition(current.endPoint.x - 1, current.endPoint.y), visited);
+            AddMove(moves, current.firstStep, new GridPosition(current.endPoint.x, current.endPoint.y + 1), visited);
+            AddMove(moves, current.firstStep, new GridPosition(current.endPoint.x, current.endPoint.y - 1), visited);
+        }
+
+        // if we failed to find a path, I have no idea what's happening... give up? Signal this failure somehow?
+        return from;
+    }
+
+    void AddBaseMove(Queue<GridMove> moves, GridPosition firstStep, HashSet<GridPosition> visited)
+    {
+        AddMove(moves, firstStep, firstStep, visited);
+    }
+
+    void AddMove(Queue<GridMove> moves, GridPosition firstStep, GridPosition target, HashSet<GridPosition> visited)
+    {
+        if (IsFull(target.x, target.y))
+            return;
+
+        if (!visited.Contains(target))
+            moves.Enqueue(new GridMove(firstStep, target));
     }
 }
