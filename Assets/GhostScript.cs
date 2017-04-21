@@ -1,15 +1,19 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-public class GhostScript : MonoBehaviour {
+public class GhostScript : AIScript
+{
+    public GameObject player;
+    public GridManager gridManager;
 
-	// Use this for initialization
-	void Start () {
-	
-	}
-	
-	// Update is called once per frame
-	void Update () {
-	
-	}
+    public override GridPosition GetMove()
+    {
+        GridPosition position = this.position;
+        GridPosition targetPos = gridManager.GetMove(
+            position.x, position.y,
+            Mathf.RoundToInt(player.transform.position.x), Mathf.RoundToInt(player.transform.position.y)
+        );
+
+        return new GridPosition(targetPos.x - position.x, targetPos.y - position.y);
+    }
 }

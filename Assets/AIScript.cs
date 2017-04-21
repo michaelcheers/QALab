@@ -20,4 +20,6 @@ public enum AIMove // (xR * 3 + yR) + 4
 public abstract class AIScript : MonoBehaviour
 {
     public abstract GridPosition GetMove();
+
+    public GridPosition position { get { return new GridPosition( Mathf.RoundToInt(transform.position.x), Mathf.RoundToInt(transform.position.y) ); } }
 }
